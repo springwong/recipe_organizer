@@ -1,0 +1,1133 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>我的食譜</title>
+<style>
+  :root{
+    --accent:#2f7a6f;
+    --accent-light:#e6f2f0;
+    --text:#2a2a2a;
+    --sub:#767676;
+    --border:#e2e2e2;
+    --bg:#fafafa;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang TC","Microsoft JhengHei",sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    font-size:14px;
+  }
+  #app{
+    max-width:480px;
+    margin:0 auto;
+    min-height:100vh;
+    background:#fff;
+    padding-bottom:70px;
+    position:relative;
+  }
+  header{
+    padding:10px 12px 6px;
+    border-bottom:1px solid var(--border);
+    position:sticky;
+    top:0;
+    background:#fff;
+    z-index:5;
+  }
+  h1{
+    font-size:16px;
+    margin:0 0 8px;
+    font-weight:600;
+  }
+  .toolbar{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+  }
+  .toolbar button{
+    font-size:12px;
+    padding:5px 9px;
+    border:1px solid var(--border);
+    background:#f5f5f5;
+    border-radius:6px;
+    color:var(--text);
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .toolbar button:active{ background:var(--accent-light); }
+  .search-row{
+    margin-top:8px;
+    display:none;
+  }
+  .search-row.show{ display:block; }
+  .search-row input{
+    width:100%;
+    padding:7px 9px;
+    font-size:13px;
+    border:1px solid var(--border);
+    border-radius:6px;
+  }
+  .count-line{
+    font-size:12px;
+    color:var(--sub);
+    margin:8px 12px 4px;
+  }
+  #recipe-list{
+    padding:0 12px;
+  }
+  .recipe-card{
+    border:1px solid var(--border);
+    border-radius:8px;
+    margin-bottom:8px;
+    overflow:hidden;
+  }
+  .recipe-head{
+    display:flex;
+    align-items:center;
+    padding:9px 10px;
+    gap:8px;
+    cursor:pointer;
+  }
+  .recipe-head input[type=checkbox]{
+    width:16px;height:16px;flex-shrink:0;
+  }
+  .recipe-name{
+    flex:1;
+    font-size:14px;
+    font-weight:500;
+  }
+  .arrow{
+    font-size:11px;
+    color:var(--sub);
+    transition:transform .15s;
+  }
+  .recipe-card.expanded .arrow{ transform:rotate(90deg); }
+  .recipe-body{
+    display:none;
+    padding:2px 10px 10px;
+    border-top:1px solid var(--border);
+    font-size:13px;
+    line-height:1.55;
+  }
+  .recipe-card.expanded .recipe-body{ display:block; }
+  .section-label{
+    font-weight:600;
+    margin-top:8px;
+    color:var(--accent);
+    font-size:12.5px;
+  }
+  .section-content{
+    white-space:pre-wrap;
+    margin:2px 0 0;
+    color:var(--text);
+  }
+  .card-actions{
+    margin-top:10px;
+    display:flex;
+    gap:8px;
+  }
+  .card-actions button{
+    font-size:12px;
+    padding:5px 10px;
+    border-radius:6px;
+    border:1px solid var(--border);
+    background:#f5f5f5;
+    cursor:pointer;
+  }
+  .empty-msg{
+    text-align:center;
+    color:var(--sub);
+    padding:40px 20px;
+    font-size:13px;
+  }
+  /* floating bottom bar */
+  #bottom-bar{
+    position:fixed;
+    left:50%;
+    transform:translateX(-50%);
+    bottom:0;
+    width:100%;
+    max-width:480px;
+    background:var(--accent);
+    color:#fff;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    padding:11px 12px;
+    font-size:13px;
+    cursor:pointer;
+    box-shadow:0 -2px 8px rgba(0,0,0,.12);
+    z-index:10;
+  }
+  #bottom-bar.show{ display:flex; }
+
+  /* generic view/page */
+  .view{
+    display:none;
+    padding:12px;
+  }
+  .view.show{ display:block; }
+  .view-header{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:12px;
+  }
+  .back-btn{
+    font-size:13px;
+    padding:5px 10px;
+    border:1px solid var(--border);
+    border-radius:6px;
+    background:#f5f5f5;
+    cursor:pointer;
+  }
+  .view-title{
+    font-size:15px;
+    font-weight:600;
+  }
+  label.field-label{
+    display:block;
+    font-size:12.5px;
+    font-weight:600;
+    margin:12px 0 4px;
+    color:var(--accent);
+  }
+  input[type=text], input[type=password], textarea{
+    width:100%;
+    padding:8px 9px;
+    font-size:13px;
+    border:1px solid var(--border);
+    border-radius:6px;
+    font-family:inherit;
+    resize:vertical;
+  }
+  textarea{ min-height:70px; line-height:1.5; }
+  .hint{
+    font-size:11px;
+    color:var(--sub);
+    margin-top:2px;
+  }
+  .form-actions{
+    margin-top:16px;
+    display:flex;
+    gap:8px;
+  }
+  .btn-primary{
+    background:var(--accent);
+    color:#fff;
+    border:none;
+    padding:9px 16px;
+    font-size:13px;
+    border-radius:6px;
+    cursor:pointer;
+  }
+  .btn-secondary{
+    background:#f5f5f5;
+    border:1px solid var(--border);
+    padding:9px 16px;
+    font-size:13px;
+    border-radius:6px;
+    cursor:pointer;
+  }
+  .btn-danger{
+    background:#fff;
+    border:1px solid #d9756b;
+    color:#c0392b;
+    padding:9px 16px;
+    font-size:13px;
+    border-radius:6px;
+    cursor:pointer;
+  }
+  .shop-item{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:8px 4px;
+    border-bottom:1px solid var(--border);
+    font-size:13.5px;
+  }
+  .shop-item input{ width:17px;height:17px;flex-shrink:0; }
+  #import-file{ display:none; }
+
+  /* custom modal (replaces native confirm/alert, which some in-app browsers block) */
+  #modal-overlay{
+    display:none;
+    position:fixed;
+    left:0; top:0; right:0; bottom:0;
+    background:rgba(0,0,0,.4);
+    z-index:100;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+  }
+  #modal-overlay.show{ display:flex; }
+  #modal-box{
+    background:#fff;
+    border-radius:10px;
+    padding:18px;
+    max-width:340px;
+    width:100%;
+    font-size:13.5px;
+    line-height:1.5;
+    box-shadow:0 4px 20px rgba(0,0,0,.2);
+  }
+  #modal-message{ margin-bottom:16px; white-space:pre-wrap; }
+  #modal-buttons{
+    display:flex;
+    gap:8px;
+    justify-content:flex-end;
+  }
+  #modal-buttons button{
+    font-size:13px;
+    padding:7px 14px;
+    border-radius:6px;
+    cursor:pointer;
+    border:1px solid var(--border);
+    background:#f5f5f5;
+  }
+  #modal-ok{
+    background:var(--accent);
+    color:#fff;
+    border:none;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- HOME VIEW -->
+  <div class="view show" id="view-home">
+    <header>
+      <h1>🍳 我的食譜</h1>
+      <div class="toolbar">
+        <button id="btn-search-toggle">🔎 搜尋食譜</button>
+        <button id="btn-add">➕ 加食譜</button>
+        <button id="btn-saved-shopping">🛍️ 今個禮拜 Shopping List</button>
+        <button id="btn-export">⬇️ 匯出食譜</button>
+        <button id="btn-import">⬆️ 匯入食譜</button>
+        <button id="btn-sync">☁️ 雲端同步</button>
+        <input type="file" id="import-file" accept="application/json">
+      </div>
+      <div class="search-row" id="search-row">
+        <input type="text" id="search-input" placeholder="輸入菜名搜尋...">
+      </div>
+    </header>
+    <div class="count-line" id="count-line">共 0 個食譜</div>
+    <div id="recipe-list"></div>
+  </div>
+
+  <!-- ADD/EDIT FORM VIEW -->
+  <div class="view" id="view-form">
+    <div class="view-header">
+      <button class="back-btn" id="form-back">← 返回</button>
+      <div class="view-title" id="form-title">新增食譜</div>
+    </div>
+    <label class="field-label">菜名</label>
+    <input type="text" id="f-name" placeholder="例如：芥末檸檬豬梅花">
+
+    <label class="field-label">材料</label>
+    <textarea id="f-ingredients" placeholder="每項一行，例如：&#10;梅花豬 600g"></textarea>
+    <div class="hint">每一項請換行輸入</div>
+
+    <label class="field-label">醃料（可留空）</label>
+    <textarea id="f-marinade" placeholder="每項一行，例如：&#10;醬油 2大匙"></textarea>
+
+    <label class="field-label">調味料（可留空）</label>
+    <textarea id="f-seasoning" placeholder="每項一行，例如：&#10;鹽 適量"></textarea>
+
+    <label class="field-label">做法</label>
+    <textarea id="f-method" style="min-height:110px" placeholder="1. ...&#10;2. ..."></textarea>
+
+    <div class="form-actions">
+      <button class="btn-primary" id="form-save">儲存</button>
+      <button class="btn-secondary" id="form-cancel">取消</button>
+      <button class="btn-danger" id="form-delete" style="display:none;">刪除</button>
+    </div>
+  </div>
+
+  <!-- GITHUB SYNC VIEW -->
+  <div class="view" id="view-sync">
+    <div class="view-header">
+      <button class="back-btn" id="sync-back">← 返回</button>
+      <div class="view-title">☁️ 雲端同步（GitHub）</div>
+    </div>
+
+    <label class="field-label">Repo（格式：使用者名/repo名）</label>
+    <input type="text" id="sync-repo" placeholder="例如：spring/my-recipes">
+
+    <label class="field-label">檔案路徑</label>
+    <input type="text" id="sync-path" placeholder="recipes.json">
+    <div class="hint">預設 recipes.json，唔識可以唔改</div>
+
+    <label class="field-label">Branch</label>
+    <input type="text" id="sync-branch" placeholder="main">
+
+    <label class="field-label">Personal Access Token</label>
+    <input type="password" id="sync-token" placeholder="ghp_xxxxxxxxxxxx">
+    <div class="hint">Token 會存喺呢部電話嘅瀏覽器入面，唔會傳去第三方，只會直接同 GitHub 溝通</div>
+
+    <div class="form-actions">
+      <button class="btn-primary" id="sync-save-config">儲存設定</button>
+    </div>
+
+    <div class="form-actions" style="margin-top:20px;">
+      <button class="btn-secondary" id="sync-push">⬆️ 上傳目前食譜去 GitHub</button>
+    </div>
+    <div class="form-actions">
+      <button class="btn-secondary" id="sync-pull">⬇️ 由 GitHub 下載（覆蓋本機食譜）</button>
+    </div>
+
+    <div id="sync-status" class="hint" style="margin-top:14px;"></div>
+  </div>
+
+  <!-- SHOPPING RESULT (generated) VIEW -->
+  <div class="view" id="view-shop-result">
+    <div class="view-header">
+      <button class="back-btn" id="shop-result-back">← 返回</button>
+      <div class="view-title">Shopping List（勾選要保留的項目）</div>
+    </div>
+    <div id="shop-result-list"></div>
+    <div class="form-actions">
+      <button class="btn-primary" id="shop-result-save">💾 儲存為今個禮拜 Shopping List</button>
+    </div>
+  </div>
+
+  <!-- SAVED SHOPPING LIST VIEW -->
+  <div class="view" id="view-shop-saved">
+    <div class="view-header">
+      <button class="back-btn" id="shop-saved-back">← 返回</button>
+      <div class="view-title">🛍️ 今個禮拜 Shopping List</div>
+    </div>
+    <div id="shop-saved-list"></div>
+    <div class="form-actions" id="shop-saved-actions" style="display:none;">
+      <button class="btn-danger" id="shop-saved-clear">清除此 Shopping List</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- FLOATING BOTTOM BAR -->
+<div id="bottom-bar">🛒 用已選食譜製作 Shopping List (<span id="selected-count">0</span>)</div>
+
+<!-- CUSTOM MODAL (replaces native confirm/alert) -->
+<div id="modal-overlay">
+  <div id="modal-box">
+    <div id="modal-message"></div>
+    <div id="modal-buttons">
+      <button id="modal-cancel" style="display:none;">取消</button>
+      <button id="modal-ok">確定</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- storage helpers ----------
+  const RECIPES_KEY = "ro_recipes_v1";
+  const SHOPPING_KEY = "ro_shopping_saved_v1";
+
+  function loadRecipes(){
+    try{
+      const raw = localStorage.getItem(RECIPES_KEY);
+      if(!raw) return null;
+      return JSON.parse(raw);
+    }catch(e){ return null; }
+  }
+  function saveRecipes(list){
+    localStorage.setItem(RECIPES_KEY, JSON.stringify(list));
+  }
+  function loadSavedShopping(){
+    try{
+      const raw = localStorage.getItem(SHOPPING_KEY);
+      if(!raw) return null;
+      return JSON.parse(raw);
+    }catch(e){ return null; }
+  }
+  function saveSavedShopping(list){
+    localStorage.setItem(SHOPPING_KEY, JSON.stringify(list));
+  }
+
+  // ---------- custom modal (in-page, avoids blocked native confirm/alert) ----------
+  const modalOverlay = document.getElementById("modal-overlay");
+  const modalMessage = document.getElementById("modal-message");
+  const modalOk = document.getElementById("modal-ok");
+  const modalCancel = document.getElementById("modal-cancel");
+
+  function closeModal(){
+    modalOverlay.classList.remove("show");
+    modalOk.onclick = null;
+    modalCancel.onclick = null;
+  }
+  function showAlert(message){
+    modalMessage.textContent = message;
+    modalCancel.style.display = "none";
+    modalOk.textContent = "確定";
+    modalOverlay.classList.add("show");
+    modalOk.onclick = function(){ closeModal(); };
+  }
+  function showConfirm(message, onYes){
+    modalMessage.textContent = message;
+    modalCancel.style.display = "inline-block";
+    modalOk.textContent = "確定";
+    modalOverlay.classList.add("show");
+    modalOk.onclick = function(){ closeModal(); onYes(); };
+    modalCancel.onclick = function(){ closeModal(); };
+  }
+
+  function uid(){
+    return "r_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,8);
+  }
+
+  function linesToArray(text){
+    return (text || "").split("\n").map(s=>s.trim()).filter(s=>s.length>0);
+  }
+
+  // ---------- demo data (first run only) ----------
+  let recipes = loadRecipes();
+  if (recipes === null){
+    recipes = [
+      {
+        id: uid(),
+        name: "蒜香青口意粉",
+        ingredients: ["青口 500g", "意大利麵 200g", "蒜頭 4瓣"],
+        marinade: [],
+        seasoning: ["橄欖油 3大匙", "鹽 適量", "黑胡椒 適量", "白酒 100ml"],
+        method: "1. 意大利麵下鹽水煮至8分熟，留少許麵水。\n2. 蒜頭切碎，用橄欖油小火爆香。\n3. 加入青口及白酒，蓋蓋煮至青口打開。\n4. 拌入意大利麵及少許麵水，鹽及黑胡椒調味即可。"
+      }
+    ];
+    saveRecipes(recipes);
+  }
+
+  const expandedIds = new Set();
+  const selectedIds = new Set();
+  let searchTerm = "";
+  let editingId = null; // null = adding new
+
+  // ---------- DOM refs ----------
+  const $ = (id)=>document.getElementById(id);
+  const views = {
+    home: $("view-home"),
+    form: $("view-form"),
+    shopResult: $("view-shop-result"),
+    shopSaved: $("view-shop-saved"),
+    sync: $("view-sync")
+  };
+
+  function showView(name){
+    Object.values(views).forEach(v=>v.classList.remove("show"));
+    views[name].classList.add("show");
+  }
+
+  // ---------- render home ----------
+  function renderHome(){
+    const list = $("recipe-list");
+    const term = searchTerm.trim();
+    const filtered = term ? recipes.filter(r=>r.name.includes(term)) : recipes;
+
+    $("count-line").textContent = "共 " + filtered.length + " 個食譜";
+
+    if (filtered.length === 0){
+      list.innerHTML = '<div class="empty-msg">' + (term ? "找不到符合的食譜" : "尚未有食譜，按「➕ 加食譜」開始") + '</div>';
+    } else {
+      list.innerHTML = filtered.map(r=>renderRecipeCard(r)).join("");
+    }
+    updateBottomBar();
+  }
+
+  function esc(s){
+    return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+
+  function renderRecipeCard(r){
+    const isOpen = expandedIds.has(r.id);
+    const isChecked = selectedIds.has(r.id);
+    let body = "";
+    if (isOpen){
+      body += '<div class="recipe-body">';
+      body += sectionHtml("材料", r.ingredients);
+      if (r.marinade && r.marinade.length) body += sectionHtml("醃料", r.marinade);
+      if (r.seasoning && r.seasoning.length) body += sectionHtml("調味料", r.seasoning);
+      body += '<div class="section-label">做法</div><div class="section-content">' + esc(r.method) + '</div>';
+      body += '<div class="card-actions">';
+      body += '<button data-action="edit" data-id="' + r.id + '">✏️ 編輯</button>';
+      body += '<button data-action="delete" data-id="' + r.id + '">🗑️ 刪除</button>';
+      body += '</div>';
+      body += '</div>';
+    }
+    return '<div class="recipe-card' + (isOpen ? ' expanded' : '') + '" data-id="' + r.id + '">' +
+      '<div class="recipe-head">' +
+        '<input type="checkbox" data-action="select" data-id="' + r.id + '" ' + (isChecked ? "checked" : "") + '>' +
+        '<div class="recipe-name" data-action="toggle" data-id="' + r.id + '"><span class="arrow">▶</span> ' + esc(r.name) + '</div>' +
+      '</div>' +
+      body +
+    '</div>';
+  }
+
+  function sectionHtml(label, arr){
+    if (!arr || arr.length === 0) return "";
+    return '<div class="section-label">' + label + '</div><div class="section-content">' + arr.map(esc).join("\n") + '</div>';
+  }
+
+  function updateBottomBar(){
+    const bar = $("bottom-bar");
+    $("selected-count").textContent = selectedIds.size;
+    if (selectedIds.size > 0){
+      bar.classList.add("show");
+    } else {
+      bar.classList.remove("show");
+    }
+  }
+
+  // ---------- event delegation on recipe list ----------
+  $("recipe-list").addEventListener("click", function(e){
+    const target = e.target.closest("[data-action]");
+    if (!target) return;
+    const action = target.dataset.action;
+    const id = target.dataset.id;
+
+    if (action === "toggle"){
+      if (expandedIds.has(id)) expandedIds.delete(id);
+      else expandedIds.add(id);
+      renderHome();
+    } else if (action === "select"){
+      if (target.checked) selectedIds.add(id);
+      else selectedIds.delete(id);
+      updateBottomBar();
+    } else if (action === "edit"){
+      openEditForm(id);
+    } else if (action === "delete"){
+      showConfirm("確定要刪除呢個食譜？", function(){
+        recipes = recipes.filter(r=>r.id!==id);
+        saveRecipes(recipes);
+        expandedIds.delete(id);
+        selectedIds.delete(id);
+        renderHome();
+      });
+    }
+  });
+
+  // checkbox change also fires via click on some browsers; ensure change works too
+  $("recipe-list").addEventListener("change", function(e){
+    const target = e.target;
+    if (target.dataset && target.dataset.action === "select"){
+      const id = target.dataset.id;
+      if (target.checked) selectedIds.add(id);
+      else selectedIds.delete(id);
+      updateBottomBar();
+    }
+  });
+
+  // ---------- search ----------
+  $("btn-search-toggle").addEventListener("click", function(){
+    $("search-row").classList.toggle("show");
+    if ($("search-row").classList.contains("show")) $("search-input").focus();
+  });
+  $("search-input").addEventListener("input", function(e){
+    searchTerm = e.target.value;
+    renderHome();
+  });
+
+  // ---------- add / edit form ----------
+  function openAddForm(){
+    editingId = null;
+    $("form-title").textContent = "新增食譜";
+    $("f-name").value = "";
+    $("f-ingredients").value = "";
+    $("f-marinade").value = "";
+    $("f-seasoning").value = "";
+    $("f-method").value = "";
+    $("form-delete").style.display = "none";
+    showView("form");
+  }
+
+  function openEditForm(id){
+    const r = recipes.find(x=>x.id===id);
+    if (!r) return;
+    editingId = id;
+    $("form-title").textContent = "編輯食譜";
+    $("f-name").value = r.name;
+    $("f-ingredients").value = (r.ingredients||[]).join("\n");
+    $("f-marinade").value = (r.marinade||[]).join("\n");
+    $("f-seasoning").value = (r.seasoning||[]).join("\n");
+    $("f-method").value = r.method || "";
+    $("form-delete").style.display = "inline-block";
+    showView("form");
+  }
+
+  $("btn-add").addEventListener("click", openAddForm);
+  $("form-back").addEventListener("click", function(){ showView("home"); });
+  $("form-cancel").addEventListener("click", function(){ showView("home"); });
+
+  $("form-save").addEventListener("click", function(){
+    const name = $("f-name").value.trim();
+    if (!name){
+      showAlert("請輸入菜名");
+      return;
+    }
+    const data = {
+      name: name,
+      ingredients: linesToArray($("f-ingredients").value),
+      marinade: linesToArray($("f-marinade").value),
+      seasoning: linesToArray($("f-seasoning").value),
+      method: $("f-method").value.trim()
+    };
+    if (editingId){
+      const idx = recipes.findIndex(r=>r.id===editingId);
+      if (idx > -1) recipes[idx] = Object.assign({id: editingId}, data);
+    } else {
+      recipes.push(Object.assign({id: uid()}, data));
+    }
+    saveRecipes(recipes);
+    showView("home");
+    renderHome();
+  });
+
+  $("form-delete").addEventListener("click", function(){
+    if (!editingId) return;
+    showConfirm("確定要刪除呢個食譜？", function(){
+      recipes = recipes.filter(r=>r.id!==editingId);
+      saveRecipes(recipes);
+      expandedIds.delete(editingId);
+      selectedIds.delete(editingId);
+      showView("home");
+      renderHome();
+    });
+  });
+
+  // ---------- export / import ----------
+  $("btn-export").addEventListener("click", function(){
+    const exportData = recipes.map(r=>({
+      name: r.name,
+      ingredients: r.ingredients || [],
+      marinade: r.marinade || [],
+      seasoning: r.seasoning || [],
+      method: r.method || ""
+    }));
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], {type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const today = new Date();
+    const dateStr = today.getFullYear() + "-" + String(today.getMonth()+1).padStart(2,"0") + "-" + String(today.getDate()).padStart(2,"0");
+    a.href = url;
+    a.download = "recipes-export-" + dateStr + ".json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
+  $("btn-import").addEventListener("click", function(){
+    $("import-file").click();
+  });
+  $("import-file").addEventListener("change", function(e){
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(ev){
+      try{
+        const imported = JSON.parse(ev.target.result);
+        if (!Array.isArray(imported)) throw new Error("格式不正確");
+        let count = 0;
+        imported.forEach(item=>{
+          if (!item || !item.name) return;
+          recipes.push({
+            id: uid(),
+            name: String(item.name),
+            ingredients: Array.isArray(item.ingredients) ? item.ingredients : [],
+            marinade: Array.isArray(item.marinade) ? item.marinade : [],
+            seasoning: Array.isArray(item.seasoning) ? item.seasoning : [],
+            method: item.method ? String(item.method) : ""
+          });
+          count++;
+        });
+        saveRecipes(recipes);
+        renderHome();
+        showAlert("成功匯入 " + count + " 個食譜");
+      }catch(err){
+        showAlert("匯入失敗，檔案格式不正確");
+      }
+      $("import-file").value = "";
+    };
+    reader.readAsText(file);
+  });
+
+  // ---------- shopping list: merging logic ----------
+  const WEIGHT_UNITS = ["g","kg","克","公克","公斤"];
+  const VOLUME_UNITS = ["ml","l","公升","毫升","cc"];
+
+  function unitGroup(unit){
+    if (WEIGHT_UNITS.includes(unit)) return "weight";
+    if (VOLUME_UNITS.includes(unit)) return "volume";
+    return null;
+  }
+  function toBaseWeight(amount, unit){
+    if (unit === "kg" || unit === "公斤") return amount*1000;
+    return amount; // g / 克 / 公克
+  }
+  function toBaseVolume(amount, unit){
+    if (unit === "l" || unit === "公升") return amount*1000;
+    return amount; // ml / 毫升 / cc
+  }
+  function fromBaseWeight(totalG){
+    if (totalG >= 1000) return {amount: trimNum(totalG/1000), unit:"kg"};
+    return {amount: trimNum(totalG), unit:"g"};
+  }
+  function fromBaseVolume(totalMl){
+    if (totalMl >= 1000) return {amount: trimNum(totalMl/1000), unit:"l"};
+    return {amount: trimNum(totalMl), unit:"ml"};
+  }
+  function trimNum(n){
+    return Math.round(n*100)/100;
+  }
+  function formatNum(n){
+    return Number.isInteger(n) ? String(n) : String(n);
+  }
+
+  function parseIngredientLine(line){
+    line = (line||"").trim();
+    if (!line) return null;
+    // name + number(+fraction) + unit, number must be preceded by whitespace
+    const match = line.match(/^(.*?)\s+([0-9]+(?:\.[0-9]+)?(?:\/[0-9]+)?)\s*([^\s0-9]*)$/);
+    if (match){
+      const name = match[1].trim();
+      const amountStr = match[2];
+      const unit = match[3].trim();
+      let amount;
+      if (amountStr.indexOf("/") > -1){
+        const parts = amountStr.split("/");
+        const num = parseFloat(parts[0]);
+        const den = parseFloat(parts[1]);
+        amount = den ? num/den : num;
+      } else {
+        amount = parseFloat(amountStr);
+      }
+      if (name && !isNaN(amount)) return {name, amount, unit};
+    }
+    // no clear numeric amount -> treat last word as descriptor (e.g. 適量/少許)
+    const parts = line.split(/\s+/);
+    if (parts.length >= 2){
+      const last = parts[parts.length-1];
+      const name = parts.slice(0,-1).join(" ");
+      return {name, amount: null, unit: last};
+    }
+    return {name: line, amount: null, unit: ""};
+  }
+
+  function mergeIngredientLines(allLines){
+    const groups = {};
+    allLines.forEach(line=>{
+      const parsed = parseIngredientLine(line);
+      if (!parsed || !parsed.name) return;
+      if (!groups[parsed.name]) groups[parsed.name] = [];
+      groups[parsed.name].push(parsed);
+    });
+
+    const result = [];
+    Object.keys(groups).forEach(name=>{
+      const entries = groups[name];
+      const withAmount = entries.filter(e=>e.amount !== null);
+      const withoutAmount = entries.filter(e=>e.amount === null);
+
+      const weightPool = withAmount.filter(e=>unitGroup(e.unit)==="weight");
+      const volumePool = withAmount.filter(e=>unitGroup(e.unit)==="volume");
+      const otherPool = withAmount.filter(e=>!unitGroup(e.unit));
+
+      if (weightPool.length){
+        const totalG = weightPool.reduce((s,e)=>s+toBaseWeight(e.amount,e.unit),0);
+        const r = fromBaseWeight(totalG);
+        result.push(name + " " + formatNum(r.amount) + r.unit);
+      }
+      if (volumePool.length){
+        const totalMl = volumePool.reduce((s,e)=>s+toBaseVolume(e.amount,e.unit),0);
+        const r = fromBaseVolume(totalMl);
+        result.push(name + " " + formatNum(r.amount) + r.unit);
+      }
+      // group "other" units by exact unit text and sum
+      const byUnit = {};
+      otherPool.forEach(e=>{
+        const u = e.unit || "";
+        byUnit[u] = (byUnit[u] || 0) + e.amount;
+      });
+      Object.keys(byUnit).forEach(u=>{
+        result.push(name + " " + formatNum(trimNum(byUnit[u])) + u);
+      });
+      // descriptors (適量 / 少許 etc) - dedupe by unit text
+      const descSet = new Set(withoutAmount.map(e=>e.unit||""));
+      descSet.forEach(d=>{
+        result.push(d ? (name + " " + d) : name);
+      });
+    });
+    return result;
+  }
+
+  // ---------- bottom bar -> generate shopping list ----------
+  $("bottom-bar").addEventListener("click", function(){
+    if (selectedIds.size === 0) return;
+    const chosen = recipes.filter(r=>selectedIds.has(r.id));
+    let allLines = [];
+    chosen.forEach(r=>{
+      allLines = allLines.concat(r.ingredients||[], r.marinade||[], r.seasoning||[]);
+    });
+    const merged = mergeIngredientLines(allLines);
+    renderShopResult(merged);
+    showView("shopResult");
+  });
+
+  let currentShopResult = []; // array of {text, checked}
+
+  function renderShopResult(mergedLines){
+    currentShopResult = mergedLines.map(text=>({text, checked:true}));
+    drawShopResult();
+  }
+
+  function drawShopResult(){
+    const container = $("shop-result-list");
+    if (currentShopResult.length === 0){
+      container.innerHTML = '<div class="empty-msg">冇材料可以顯示</div>';
+      return;
+    }
+    container.innerHTML = currentShopResult.map((item, idx)=>{
+      return '<div class="shop-item"><input type="checkbox" data-idx="' + idx + '" ' + (item.checked ? "checked" : "") + '><span>' + esc(item.text) + '</span></div>';
+    }).join("");
+  }
+
+  $("shop-result-list").addEventListener("change", function(e){
+    const target = e.target;
+    if (target.type === "checkbox"){
+      const idx = parseInt(target.dataset.idx, 10);
+      currentShopResult[idx].checked = target.checked;
+    }
+  });
+
+  $("shop-result-back").addEventListener("click", function(){ showView("home"); });
+
+  $("shop-result-save").addEventListener("click", function(){
+    const chosen = currentShopResult.filter(i=>i.checked).map(i=>({text:i.text, checked:false}));
+    if (chosen.length === 0){
+      showAlert("請至少揀選一項");
+      return;
+    }
+    saveSavedShopping(chosen);
+    // clear selections
+    selectedIds.clear();
+    renderHome();
+    showView("home");
+    showAlert("已儲存今個禮拜 Shopping List");
+  });
+
+  // ---------- saved shopping list view ----------
+  $("btn-saved-shopping").addEventListener("click", function(){
+    renderSavedShopping();
+    showView("shopSaved");
+  });
+  $("shop-saved-back").addEventListener("click", function(){ showView("home"); });
+
+  function renderSavedShopping(){
+    const saved = loadSavedShopping();
+    const container = $("shop-saved-list");
+    const actions = $("shop-saved-actions");
+    if (!saved || saved.length === 0){
+      container.innerHTML = '<div class="empty-msg">今個禮拜仲未有 Shopping List。</div>';
+      actions.style.display = "none";
+      return;
+    }
+    actions.style.display = "flex";
+    container.innerHTML = saved.map((item, idx)=>{
+      return '<div class="shop-item"><input type="checkbox" data-idx="' + idx + '" ' + (item.checked ? "checked" : "") + '><span>' + esc(item.text) + '</span></div>';
+    }).join("");
+  }
+
+  $("shop-saved-list").addEventListener("change", function(e){
+    const target = e.target;
+    if (target.type === "checkbox"){
+      const idx = parseInt(target.dataset.idx, 10);
+      const saved = loadSavedShopping() || [];
+      if (saved[idx]){
+        saved[idx].checked = target.checked;
+        saveSavedShopping(saved);
+      }
+    }
+  });
+
+  $("shop-saved-clear").addEventListener("click", function(){
+    showConfirm("確定要清除今個禮拜嘅 Shopping List？", function(){
+      localStorage.removeItem(SHOPPING_KEY);
+      renderSavedShopping();
+    });
+  });
+
+  // ---------- GitHub cloud sync ----------
+  const SYNC_CONFIG_KEY = "ro_github_config_v1";
+
+  function loadSyncConfig(){
+    try{
+      const raw = localStorage.getItem(SYNC_CONFIG_KEY);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    }catch(e){ return null; }
+  }
+  function saveSyncConfig(cfg){
+    localStorage.setItem(SYNC_CONFIG_KEY, JSON.stringify(cfg));
+  }
+
+  function b64EncodeUnicode(str){
+    return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, function(match, p1){
+      return String.fromCharCode(parseInt(p1, 16));
+    }));
+  }
+  function b64DecodeUnicode(str){
+    return decodeURIComponent(atob(str).split("").map(function(c){
+      return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
+    }).join(""));
+  }
+
+  function setSyncStatus(msg, isError){
+    const el = $("sync-status");
+    el.textContent = msg;
+    el.style.color = isError ? "#c0392b" : "var(--sub)";
+  }
+
+  function fillSyncForm(){
+    const cfg = loadSyncConfig() || {};
+    $("sync-repo").value = cfg.repo || "";
+    $("sync-path").value = cfg.path || "recipes.json";
+    $("sync-branch").value = cfg.branch || "main";
+    $("sync-token").value = cfg.token || "";
+    setSyncStatus("");
+  }
+
+  $("btn-sync").addEventListener("click", function(){
+    fillSyncForm();
+    showView("sync");
+  });
+  $("sync-back").addEventListener("click", function(){ showView("home"); });
+
+  $("sync-save-config").addEventListener("click", function(){
+    const repo = $("sync-repo").value.trim();
+    const token = $("sync-token").value.trim();
+    if (!repo || !token){
+      showAlert("請輸入 Repo 同 Token");
+      return;
+    }
+    saveSyncConfig({
+      repo: repo,
+      path: $("sync-path").value.trim() || "recipes.json",
+      branch: $("sync-branch").value.trim() || "main",
+      token: token
+    });
+    setSyncStatus("設定已儲存");
+  });
+
+  function githubApiUrl(cfg){
+    return "https://api.github.com/repos/" + cfg.repo + "/contents/" + cfg.path;
+  }
+
+  async function githubGetFile(cfg){
+    const res = await fetch(githubApiUrl(cfg) + "?ref=" + encodeURIComponent(cfg.branch), {
+      headers: {
+        "Authorization": "token " + cfg.token,
+        "Accept": "application/vnd.github+json"
+      }
+    });
+    if (res.status === 404){
+      return null; // file doesn't exist yet
+    }
+    if (!res.ok){
+      const body = await res.text();
+      throw new Error("GitHub 錯誤 (" + res.status + "): " + body);
+    }
+    const data = await res.json();
+    return data; // includes .sha and .content (base64)
+  }
+
+  $("sync-push").addEventListener("click", async function(){
+    const cfg = loadSyncConfig();
+    if (!cfg){
+      showAlert("請先儲存設定");
+      return;
+    }
+    setSyncStatus("上傳緊...");
+    try{
+      const exportData = recipes.map(r=>({
+        name: r.name,
+        ingredients: r.ingredients || [],
+        marinade: r.marinade || [],
+        seasoning: r.seasoning || [],
+        method: r.method || ""
+      }));
+      const jsonStr = JSON.stringify(exportData, null, 2);
+      const existing = await githubGetFile(cfg);
+      const body = {
+        message: "更新食譜 (" + new Date().toLocaleString() + ")",
+        content: b64EncodeUnicode(jsonStr),
+        branch: cfg.branch
+      };
+      if (existing && existing.sha) body.sha = existing.sha;
+
+      const res = await fetch(githubApiUrl(cfg), {
+        method: "PUT",
+        headers: {
+          "Authorization": "token " + cfg.token,
+          "Accept": "application/vnd.github+json",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(body)
+      });
+      if (!res.ok){
+        const errBody = await res.text();
+        throw new Error("GitHub 錯誤 (" + res.status + "): " + errBody);
+      }
+      setSyncStatus("上傳成功！(" + exportData.length + " 個食譜)");
+    }catch(err){
+      setSyncStatus("上傳失敗：" + err.message, true);
+    }
+  });
+
+  $("sync-pull").addEventListener("click", async function(){
+    const cfg = loadSyncConfig();
+    if (!cfg){
+      showAlert("請先儲存設定");
+      return;
+    }
+    showConfirm("由 GitHub 下載會覆蓋本機所有食譜，確定？", async function(){
+      setSyncStatus("下載緊...");
+      try{
+        const file = await githubGetFile(cfg);
+        if (!file){
+          setSyncStatus("雲端未有呢個檔案，請先上傳一次", true);
+          return;
+        }
+        const jsonStr = b64DecodeUnicode(file.content.replace(/\n/g, ""));
+        const imported = JSON.parse(jsonStr);
+        if (!Array.isArray(imported)) throw new Error("雲端檔案格式不正確");
+        recipes = imported.map(item=>({
+          id: uid(),
+          name: String(item.name || ""),
+          ingredients: Array.isArray(item.ingredients) ? item.ingredients : [],
+          marinade: Array.isArray(item.marinade) ? item.marinade : [],
+          seasoning: Array.isArray(item.seasoning) ? item.seasoning : [],
+          method: item.method ? String(item.method) : ""
+        })).filter(r=>r.name);
+        saveRecipes(recipes);
+        expandedIds.clear();
+        selectedIds.clear();
+        renderHome();
+        setSyncStatus("下載成功！(" + recipes.length + " 個食譜)");
+      }catch(err){
+        setSyncStatus("下載失敗：" + err.message, true);
+      }
+    });
+  });
+
+  // ---------- init ----------
+  renderHome();
+
+})();
+</script>
+</body>
+</html>
